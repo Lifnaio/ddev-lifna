@@ -1,3 +1,8 @@
+[![add-on registry](https://img.shields.io/badge/DDEV-Add--on_Registry-blue)](https://addons.ddev.com)
+[![CI](https://github.com/Lifnaio/ddev-lifna/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Lifnaio/ddev-lifna/actions/workflows/tests.yml?query=branch%3Amain)
+[![last commit](https://img.shields.io/github/last-commit/Lifnaio/ddev-lifna)](https://github.com/Lifnaio/ddev-lifna/commits)
+[![release](https://img.shields.io/github/v/release/Lifnaio/ddev-lifna)](https://github.com/Lifnaio/ddev-lifna/releases/latest)
+
 # DDEV Lifna
 
 Connect an existing DDEV Drupal project to a Lifna-hosted environment.
@@ -16,6 +21,8 @@ Code remains Git-first. The provider only syncs the database and Drupal public f
 
 ## Install
 
+Requires DDEV v1.24.0+ and an existing DDEV Drupal project.
+
 From a DDEV project root:
 
 ```bash
@@ -23,12 +30,18 @@ ddev add-on get Lifnaio/ddev-lifna
 ddev restart
 ```
 
-For local development of this add-on:
+To test a local checkout while developing this add-on, use the same command with a local path, for example `ddev add-on get /path/to/ddev-lifna`.
+
+## Upgrade
+
+Repeat the install command to update to the latest release:
 
 ```bash
-ddev add-on get /path/to/ddev-lifna
+ddev add-on get Lifnaio/ddev-lifna
 ddev restart
 ```
+
+Check the installed version with `ddev add-on list --installed`.
 
 ## Connect A Project
 
@@ -68,6 +81,24 @@ ddev lifna open
 `ddev pull lifna` downloads the Lifna database and public files into the DDEV project.
 
 `ddev push lifna` uploads the local database and public files back to the scoped Lifna environment. Pushes to protected environments such as `main`, `live`, `prod`, or `production` require a typed confirmation.
+
+## What Has Been Tested
+
+Automated tests cover:
+
+- Add-on installation into a disposable DDEV Drupal project.
+- Generated DDEV provider and host command files.
+- Scoped token storage without command-line token input.
+- Production base URL protection and explicit local development mode.
+- Token-safe diagnostics.
+- Protected environment push confirmation.
+- Files archive traversal protection before extraction.
+
+## Limitations
+
+- Database and public files are synced; code stays Git-first.
+- Lifna API endpoints and token generation must be available in the Lifna app before pull, push, and lifecycle commands can complete.
+- Local development URLs require explicit `--dev` or `LIFNA_DEV_MODE=1`.
 
 ## Security Model
 
