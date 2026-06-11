@@ -19,7 +19,7 @@ Code remains Git-first. The provider only syncs the database and Drupal public f
 From a DDEV project root:
 
 ```bash
-ddev add-on get lifna/ddev-lifna
+ddev add-on get Lifnaio/ddev-lifna
 ddev restart
 ```
 
