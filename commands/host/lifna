@@ -32,6 +32,30 @@ Lifecycle:
 USAGE
 }
 
+validate_base_url() {
+  local base_url="$1"
+  local dev_mode="${2:-0}"
+  local trusted_url="https://app.lifna.com"
+
+  if [ "${dev_mode}" = "1" ] || [ "${LIFNA_DEV_MODE:-0}" = "1" ]; then
+    case "${base_url}" in
+      https://*|http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1|http://[::1]:*|http://[::1])
+        return 0
+        ;;
+      *)
+        echo "Dev mode allows HTTPS and local HTTP URLs only." >&2
+        return 1
+        ;;
+    esac
+  fi
+
+  if [ "${base_url}" != "${trusted_url}" ]; then
+    echo "Refusing untrusted Lifna URL: ${base_url}" >&2
+    echo "Use ${trusted_url}, or set LIFNA_DEV_MODE=1 / pass --dev for local Lifna development." >&2
+    return 1
+  fi
+}
+
 json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
@@ -84,6 +108,7 @@ connect() {
   local environment="main"
   local base_url=""
   local token=""
+  local dev_mode="0"
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -93,8 +118,11 @@ connect() {
       --environment) environment="${2:-}"; shift ;;
       --base-url=*) base_url="${1#*=}" ;;
       --base-url) base_url="${2:-}"; shift ;;
-      --token=*) token="${1#*=}" ;;
-      --token) token="${2:-}"; shift ;;
+      --dev) dev_mode="1" ;;
+      --token=*|--token)
+        echo "Do not pass Lifna tokens on the command line. Use the secure prompt or LIFNA_TOKEN." >&2
+        exit 64
+        ;;
       -h|--help) usage; exit 0 ;;
       *) echo "Unknown option: $1" >&2; usage; exit 64 ;;
     esac
@@ -108,13 +136,17 @@ connect() {
   fi
 
   base_url="${base_url%/}"
+  validate_base_url "${base_url}" "${dev_mode}"
   write_manifest "${site}" "${environment}" "${base_url}"
+
+  token="${LIFNA_TOKEN:-}"
 
   if [ -z "${token}" ]; then
     echo "Create a Lifna DDEV token for ${site}/${environment}, then paste it here."
     echo "Token URL: ${base_url}/sites/${site}/export"
     printf "LIFNA_TOKEN: "
-    IFS= read -r token
+    IFS= read -rs token
+    echo
   fi
 
   if [ -n "${token}" ]; then

@@ -45,6 +45,8 @@ ddev lifna connect \
 
 Paste the token when prompted.
 
+For local Lifna platform development only, set `LIFNA_DEV_MODE=1` or pass `--dev` when connecting to a local HTTPS or localhost URL.
+
 The command writes:
 
 - `.lifna/environment.json` with the Lifna site/environment link.
@@ -65,23 +67,15 @@ ddev lifna open
 
 `ddev pull lifna` downloads the Lifna database and public files into the DDEV project.
 
-`ddev push lifna` uploads the local database and public files back to the scoped Lifna environment. Treat pushes to production with care.
+`ddev push lifna` uploads the local database and public files back to the scoped Lifna environment. Pushes to protected environments such as `main`, `live`, `prod`, or `production` require a typed confirmation.
 
-## Required Lifna API
+## Security Model
 
-The add-on calls:
+The add-on uses a Lifna local access token created in the Lifna UI. Tokens are scoped to one site, one environment, limited actions, and an expiry date.
 
-```text
-GET  /api/ddev/v1/sites/{site}/environments/{environment}
-GET  /api/ddev/v1/sites/{site}/environments/{environment}/pull/database
-GET  /api/ddev/v1/sites/{site}/environments/{environment}/pull/files
-POST /api/ddev/v1/sites/{site}/environments/{environment}/push/database
-POST /api/ddev/v1/sites/{site}/environments/{environment}/push/files
-POST /api/ddev/v1/sites/{site}/environments/{environment}/spinup
-POST /api/ddev/v1/sites/{site}/environments/{environment}/pause
-```
+Tokens are read from the secure prompt during `ddev lifna connect` or from `LIFNA_TOKEN`. Do not pass tokens as command-line arguments and do not commit `.ddev/lifna/.env`.
 
-Authentication uses a bearer token created in Lifna and scoped to one site/environment.
+Production connections must use `https://app.lifna.com` unless explicit dev mode is enabled.
 
 ## Publish
 

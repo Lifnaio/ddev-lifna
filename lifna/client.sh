@@ -36,11 +36,34 @@ lifna_site="${LIFNA_SITE:-$(json_value site.slug)}"
 lifna_environment="${LIFNA_ENVIRONMENT:-$(json_value environment.slug)}"
 lifna_base_url="${LIFNA_BASE_URL:-$(json_value lifna.base_url)}"
 lifna_token="${LIFNA_TOKEN:-}"
+lifna_environment_type="${LIFNA_ENVIRONMENT_TYPE:-$(json_value environment.type)}"
 api_path="/api/ddev/v1/sites/${lifna_site}/environments/${lifna_environment}"
 
 require_context() {
   if [ -z "${lifna_base_url}" ] || [ -z "${lifna_site}" ] || [ -z "${lifna_environment}" ]; then
     echo "Missing Lifna context. Run: ddev lifna connect --site=<site-slug> --environment=<env-slug> --base-url=<lifna-url>" >&2
+    exit 64
+  fi
+}
+
+validate_base_url() {
+  local trusted_url="https://app.lifna.com"
+
+  if [ "${LIFNA_DEV_MODE:-0}" = "1" ]; then
+    case "${lifna_base_url}" in
+      https://*|http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1|http://[::1]:*|http://[::1])
+        return 0
+        ;;
+      *)
+        echo "Dev mode allows HTTPS and local HTTP URLs only." >&2
+        exit 64
+        ;;
+    esac
+  fi
+
+  if [ "${lifna_base_url}" != "${trusted_url}" ]; then
+    echo "Refusing untrusted Lifna URL: ${lifna_base_url}" >&2
+    echo "Expected ${trusted_url}. Set LIFNA_DEV_MODE=1 only for local Lifna development." >&2
     exit 64
   fi
 }
@@ -61,6 +84,7 @@ TOKEN
 
 curl_lifna() {
   require_context
+  validate_base_url
   require_token
   curl --fail --silent --show-error \
     -H "Authorization: Bearer ${lifna_token}" \
@@ -70,6 +94,54 @@ curl_lifna() {
 
 post_lifna() {
   curl_lifna -X POST "${lifna_base_url}${api_path}/$1"
+}
+
+is_protected_environment() {
+  local slug
+  local type
+  slug="$(printf '%s' "${lifna_environment}" | tr '[:upper:]' '[:lower:]')"
+  type="$(printf '%s' "${lifna_environment_type}" | tr '[:upper:]' '[:lower:]')"
+
+  case "${slug}" in
+    main|live|prod|production) return 0 ;;
+  esac
+
+  case "${type}" in
+    production|live|prod) return 0 ;;
+  esac
+
+  return 1
+}
+
+confirm_protected_push() {
+  if ! is_protected_environment; then
+    return 0
+  fi
+
+  local phrase="push ${lifna_site}/${lifna_environment}"
+  local reply=""
+
+  echo "This will upload your local database/files to protected Lifna environment ${lifna_site}/${lifna_environment}."
+  echo "Type '${phrase}' to continue:"
+  IFS= read -r reply
+
+  if [ "${reply}" != "${phrase}" ]; then
+    echo "Push cancelled." >&2
+    exit 67
+  fi
+}
+
+validate_tar_paths() {
+  local archive="$1"
+
+  tar -tzf "${archive}" | while IFS= read -r entry; do
+    case "${entry}" in
+      /*|../*|*/../*|..|*/..)
+        echo "Unsafe path in Lifna files archive: ${entry}" >&2
+        exit 1
+        ;;
+    esac
+  done
 }
 
 case "${1:-status}" in
@@ -124,6 +196,7 @@ case "${1:-status}" in
     rm -rf "${downloads}/files"
     mkdir -p "${downloads}/files"
     curl_lifna -L "${lifna_base_url}${api_path}/pull/files" -o "${downloads}/files.tar.gz"
+    validate_tar_paths "${downloads}/files.tar.gz"
     tar -xzf "${downloads}/files.tar.gz" -C "${downloads}/files"
     echo "Downloaded Lifna files to ${downloads}/files"
     ;;
@@ -132,6 +205,7 @@ case "${1:-status}" in
       echo "DDEV did not provide ${downloads}/db.sql.gz for push." >&2
       exit 66
     fi
+    confirm_protected_push
     curl_lifna -X POST -F "database=@${downloads}/db.sql.gz" "${lifna_base_url}${api_path}/push/database"
     ;;
   push-files)
@@ -144,6 +218,8 @@ case "${1:-status}" in
       echo "No Drupal files directory found to push." >&2
       exit 66
     fi
+    validate_tar_paths "${downloads}/files-push.tar.gz"
+    confirm_protected_push
     curl_lifna -X POST -F "files=@${downloads}/files-push.tar.gz" "${lifna_base_url}${api_path}/push/files"
     ;;
   *)
