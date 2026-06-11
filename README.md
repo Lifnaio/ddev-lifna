@@ -77,6 +77,19 @@ Tokens are read from the secure prompt during `ddev lifna connect` or from `LIFN
 
 Production connections must use `https://app.lifna.com` unless explicit dev mode is enabled.
 
+## Testing
+
+The test suite is written with Bats and includes shell-level security tests plus a DDEV install smoke test.
+
+```bash
+bash -n commands/host/lifna lifna/client.sh
+shellcheck commands/host/lifna lifna/client.sh
+yamllint .
+bats tests
+```
+
+GitHub Actions runs the same lint checks and uses DDEV's add-on test action to install the add-on into a disposable DDEV project.
+
 ## Publish
 
 The recommended GitHub repo name is `ddev-lifna`, with the `ddev-get` topic added for DDEV add-on discovery.

@@ -12,6 +12,7 @@ if [ -f "${env_file}" ]; then
 fi
 
 json_value() {
+  # shellcheck disable=SC2016
   php -r '
     $path = explode(".", $argv[1]);
     $file = $argv[2];
@@ -51,7 +52,7 @@ validate_base_url() {
 
   if [ "${LIFNA_DEV_MODE:-0}" = "1" ]; then
     case "${lifna_base_url}" in
-      https://*|http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1|http://[::1]:*|http://[::1])
+      https://*|http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1)
         return 0
         ;;
       *)
@@ -180,6 +181,7 @@ case "${1:-status}" in
     ;;
   open)
     require_context
+    # shellcheck disable=SC2016
     curl_lifna "${lifna_base_url}${api_path}" | php -r '
       $payload = json_decode(stream_get_contents(STDIN), true);
       echo $payload["environment"]["url"] ?? "";
@@ -213,6 +215,8 @@ case "${1:-status}" in
     if [ -d "web/sites/default/files" ]; then
       tar -czf "${downloads}/files-push.tar.gz" -C web/sites/default files
     elif [ -n "${DDEV_FILES_DIRS:-}" ]; then
+      # DDEV_FILES_DIRS is intentionally word-split because DDEV may provide multiple directories.
+      # shellcheck disable=SC2086
       tar -czf "${downloads}/files-push.tar.gz" ${DDEV_FILES_DIRS}
     else
       echo "No Drupal files directory found to push." >&2

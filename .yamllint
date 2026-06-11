@@ -1,0 +1,10 @@
+---
+extends: default
+
+rules:
+  document-start: disable
+  line-length:
+    max: 180
+  comments:
+    require-starting-space: false
+  truthy: disable

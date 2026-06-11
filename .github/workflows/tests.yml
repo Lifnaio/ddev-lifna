@@ -1,15 +1,23 @@
-name: Tests
+name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install lint tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck yamllint
       - name: Check generated markers
         run: |
           set -eu
@@ -21,3 +29,22 @@ jobs:
         run: |
           bash -n commands/host/lifna
           bash -n lifna/client.sh
+      - name: ShellCheck
+        run: |
+          shellcheck commands/host/lifna lifna/client.sh
+      - name: YAML lint
+        run: |
+          yamllint .
+      - name: README endpoint hygiene
+        run: |
+          ! grep -R "/api/ddev/v1" README.md tests providers commands
+
+  add-on-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ddev/github-action-add-on-test@v2
+        with:
+          ddev_version: stable
+          token: ${{ secrets.GITHUB_TOKEN }}
+          addon_repository: ${{ github.repository }}
+          addon_ref: ${{ github.ref }}

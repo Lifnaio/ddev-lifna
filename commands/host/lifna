@@ -39,7 +39,7 @@ validate_base_url() {
 
   if [ "${dev_mode}" = "1" ] || [ "${LIFNA_DEV_MODE:-0}" = "1" ]; then
     case "${base_url}" in
-      https://*|http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1|http://[::1]:*|http://[::1])
+      https://*|http://localhost:*|http://localhost|http://127.0.0.1:*|http://127.0.0.1)
         return 0
         ;;
       *)
