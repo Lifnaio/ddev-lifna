@@ -45,7 +45,13 @@ Check the installed version with `ddev add-on list --installed`.
 
 ## Connect A Project
 
-In Lifna, open the site export page and create a DDEV local access token for the target environment.
+In Lifna, open the site, choose **Download for DDEV / local development**, then use the **DDEV access token** card. The direct URL is:
+
+```text
+https://app.lifna.com/sites/<site-slug>/export
+```
+
+Choose the target environment and allowed actions, click **Create DDEV token**, and copy the one-time token.
 
 Then run:
 
