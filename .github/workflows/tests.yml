@@ -1,0 +1,23 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check generated markers
+        run: |
+          set -eu
+          grep -q '#ddev-generated' providers/lifna.yaml
+          grep -q '#ddev-generated' commands/host/lifna
+          grep -q '#ddev-generated' lifna/client.sh
+          grep -q '#ddev-generated' lifna/.gitignore
+      - name: Shell syntax
+        run: |
+          bash -n commands/host/lifna
+          bash -n lifna/client.sh

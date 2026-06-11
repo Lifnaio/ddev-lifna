@@ -1,0 +1,32 @@
+#ddev-generated
+# Lifna DDEV provider.
+#
+# Native DDEV workflow:
+#   ddev pull lifna   # pull database + public files from Lifna
+#   ddev push lifna   # push database + public files to Lifna
+#
+# Code remains Git-first; this provider only syncs database and user-generated files.
+
+info_command:
+  command: |
+    bash .ddev/lifna/client.sh info
+
+auth_command:
+  command: |
+    bash .ddev/lifna/client.sh auth
+
+db_pull_command:
+  command: |
+    bash .ddev/lifna/client.sh pull-db
+
+files_pull_command:
+  command: |
+    bash .ddev/lifna/client.sh pull-files
+
+db_push_command:
+  command: |
+    bash .ddev/lifna/client.sh push-db
+
+files_push_command:
+  command: |
+    bash .ddev/lifna/client.sh push-files

@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+#ddev-generated
+## Description: Connect and manage this project with Lifna
+## Usage: lifna [connect|status|spinup|pause|open|auth|login|info|doctor]
+## Example: ddev lifna connect --site=my-site --environment=main --base-url=https://app.lifna.com
+
+set -euo pipefail
+
+subcommand="${1:-status}"
+shift || true
+
+manifest="${DDEV_APPROOT}/.lifna/environment.json"
+manifest_dir="${DDEV_APPROOT}/.lifna"
+env_file="${DDEV_APPROOT}/.ddev/lifna/.env"
+
+usage() {
+  cat <<'USAGE'
+Usage: ddev lifna [connect|status|spinup|pause|open|auth|login|info|doctor]
+
+Connect an existing DDEV Drupal project:
+  ddev lifna connect --site=<site-slug> --environment=<env-slug> --base-url=<lifna-url>
+
+Native data sync:
+  ddev pull lifna
+  ddev push lifna
+
+Lifecycle:
+  ddev lifna status
+  ddev lifna spinup
+  ddev lifna pause
+  ddev lifna open
+USAGE
+}
+
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+write_manifest() {
+  local site="$1"
+  local environment="$2"
+  local base_url="$3"
+
+  mkdir -p "${manifest_dir}"
+  if [ ! -f "${manifest_dir}/.gitignore" ]; then
+    printf '#ddev-generated\n*\n' > "${manifest_dir}/.gitignore"
+  fi
+
+  cat > "${manifest}" <<JSON
+{
+  "generated_by": "ddev-lifna",
+  "lifna": {
+    "base_url": "$(json_escape "${base_url}")"
+  },
+  "site": {
+    "slug": "$(json_escape "${site}")"
+  },
+  "environment": {
+    "slug": "$(json_escape "${environment}")"
+  },
+  "local_runner": {
+    "name": "ddev",
+    "provider": ".ddev/providers/lifna.yaml",
+    "command": ".ddev/commands/host/lifna"
+  }
+}
+JSON
+}
+
+write_token() {
+  local token="$1"
+
+  mkdir -p "$(dirname "${env_file}")"
+  chmod 700 "$(dirname "${env_file}")" 2>/dev/null || true
+  {
+    echo "# Lifna local access token. Do not commit."
+    printf "LIFNA_TOKEN='%s'\n" "$(printf '%s' "${token}" | sed "s/'/'\\\\''/g")"
+  } > "${env_file}"
+  chmod 600 "${env_file}" 2>/dev/null || true
+}
+
+connect() {
+  local site=""
+  local environment="main"
+  local base_url=""
+  local token=""
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --site=*) site="${1#*=}" ;;
+      --site) site="${2:-}"; shift ;;
+      --environment=*) environment="${1#*=}" ;;
+      --environment) environment="${2:-}"; shift ;;
+      --base-url=*) base_url="${1#*=}" ;;
+      --base-url) base_url="${2:-}"; shift ;;
+      --token=*) token="${1#*=}" ;;
+      --token) token="${2:-}"; shift ;;
+      -h|--help) usage; exit 0 ;;
+      *) echo "Unknown option: $1" >&2; usage; exit 64 ;;
+    esac
+    shift
+  done
+
+  if [ -z "${site}" ] || [ -z "${base_url}" ]; then
+    echo "--site and --base-url are required." >&2
+    usage
+    exit 64
+  fi
+
+  base_url="${base_url%/}"
+  write_manifest "${site}" "${environment}" "${base_url}"
+
+  if [ -z "${token}" ]; then
+    echo "Create a Lifna DDEV token for ${site}/${environment}, then paste it here."
+    echo "Token URL: ${base_url}/sites/${site}/export"
+    printf "LIFNA_TOKEN: "
+    IFS= read -r token
+  fi
+
+  if [ -n "${token}" ]; then
+    write_token "${token}"
+  fi
+
+  echo "Connected ${DDEV_SITENAME:-this DDEV project} to Lifna ${site}/${environment}."
+  echo "Try: ddev lifna status"
+}
+
+case "${subcommand}" in
+  connect)
+    connect "$@"
+    ;;
+  status|spinup|pause|open|auth|login|info|doctor)
+    ddev exec bash .ddev/lifna/client.sh "${subcommand}" "$@"
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    echo "Unknown Lifna command: ${subcommand}" >&2
+    usage
+    exit 64
+    ;;
+esac

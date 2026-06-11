@@ -1,0 +1,29 @@
+name: lifna
+ddev_version_constraint: '>= v1.24.0'
+pre_install_actions: []
+project_files:
+  - providers/lifna.yaml
+  - commands/host/lifna
+  - lifna/client.sh
+  - lifna/.gitignore
+global_files: []
+post_install_actions:
+  - |
+    #ddev-description: Prepare Lifna DDEV integration
+    set -eu
+    chmod +x commands/host/lifna lifna/client.sh
+    mkdir -p ../.lifna
+    if [ ! -f ../.lifna/.gitignore ]; then
+      printf '#ddev-generated\n*\n' > ../.lifna/.gitignore
+    fi
+    echo "Lifna add-on installed."
+    echo "Connect this project with: ddev lifna connect --site=<site-slug> --environment=<env-slug> --base-url=<lifna-url>"
+removal_actions:
+  - |
+    #ddev-description: Remove Lifna local secrets
+    set -eu
+    rm -f lifna/.env
+    if [ -f ../.lifna/.gitignore ] && grep -q '#ddev-generated' ../.lifna/.gitignore; then
+      rm -f ../.lifna/.gitignore
+      rmdir ../.lifna 2>/dev/null || true
+    fi

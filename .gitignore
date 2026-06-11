@@ -1,0 +1,5 @@
+.DS_Store
+.ddev/
+.lifna/
+vendor/
+node_modules/
