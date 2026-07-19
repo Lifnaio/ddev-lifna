@@ -48,23 +48,22 @@ Check the installed version with `ddev add-on list --installed`.
 In Lifna, open the site, choose **Download for DDEV / local development**, then use the **DDEV access token** card. The direct URL is:
 
 ```text
-https://app.lifna.com/sites/<site-slug>/export
+https://app.lifna.io/sites/<site-slug>/export
 ```
 
-Choose the target environment and allowed actions, click **Create DDEV token**, and copy the one-time token.
+Choose **Account-wide token** to reuse one token across every Lifna site you can access, or choose a specific environment for a narrower token. Select the allowed actions, click **Create DDEV token**, and copy the one-time token.
 
 Then run:
 
 ```bash
 ddev lifna connect \
   --site=my-site \
-  --environment=main \
-  --base-url=https://app.lifna.com
+  --environment=main
 ```
 
 Paste the token when prompted.
 
-For local Lifna platform development only, set `LIFNA_DEV_MODE=1` or pass `--dev` when connecting to a local HTTPS or localhost URL.
+For local Lifna platform development only, set `LIFNA_DEV_MODE=1` or pass `--dev` with `--base-url` when connecting to a local HTTPS or localhost URL.
 
 The command writes:
 
@@ -108,11 +107,11 @@ Automated tests cover:
 
 ## Security Model
 
-The add-on uses a Lifna local access token created in the Lifna UI. Tokens are scoped to one site, one environment, limited actions, and an expiry date.
+The add-on uses a Lifna local access token created in the Lifna UI. Tokens can be account-wide or scoped to one site/environment, and always carry limited actions plus an expiry date. Lifna still checks your account permissions for the requested site on every API call.
 
 Tokens are read from the secure prompt during `ddev lifna connect` or from `LIFNA_TOKEN`. Do not pass tokens as command-line arguments and do not commit `.ddev/lifna/.env`.
 
-Production connections must use `https://app.lifna.com` unless explicit dev mode is enabled.
+Production connections default to `https://app.lifna.io` unless explicit dev mode is enabled.
 
 ## Testing
 

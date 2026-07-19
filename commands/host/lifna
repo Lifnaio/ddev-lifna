@@ -2,7 +2,7 @@
 #ddev-generated
 ## Description: Connect and manage this project with Lifna
 ## Usage: lifna [connect|status|spinup|pause|open|auth|login|info|doctor]
-## Example: ddev lifna connect --site=my-site --environment=main --base-url=https://app.lifna.com
+## Example: ddev lifna connect --site=my-site --environment=main
 
 set -euo pipefail
 
@@ -18,7 +18,7 @@ usage() {
 Usage: ddev lifna [connect|status|spinup|pause|open|auth|login|info|doctor]
 
 Connect an existing DDEV Drupal project:
-  ddev lifna connect --site=<site-slug> --environment=<env-slug> --base-url=<lifna-url>
+  ddev lifna connect --site=<site-slug> --environment=<env-slug>
 
 Native data sync:
   ddev pull lifna
@@ -35,7 +35,8 @@ USAGE
 validate_base_url() {
   local base_url="$1"
   local dev_mode="${2:-0}"
-  local trusted_url="https://app.lifna.com"
+  local trusted_url="https://app.lifna.io"
+  local legacy_trusted_url="https://app.lifna.com"
 
   if [ "${dev_mode}" = "1" ] || [ "${LIFNA_DEV_MODE:-0}" = "1" ]; then
     case "${base_url}" in
@@ -49,7 +50,7 @@ validate_base_url() {
     esac
   fi
 
-  if [ "${base_url}" != "${trusted_url}" ]; then
+  if [ "${base_url}" != "${trusted_url}" ] && [ "${base_url}" != "${legacy_trusted_url}" ]; then
     echo "Refusing untrusted Lifna URL: ${base_url}" >&2
     echo "Use ${trusted_url}, or set LIFNA_DEV_MODE=1 / pass --dev for local Lifna development." >&2
     return 1
@@ -106,7 +107,7 @@ write_token() {
 connect() {
   local site=""
   local environment="main"
-  local base_url=""
+  local base_url="https://app.lifna.io"
   local token=""
   local dev_mode="0"
 
@@ -129,13 +130,20 @@ connect() {
     shift
   done
 
-  if [ -z "${site}" ] || [ -z "${base_url}" ]; then
-    echo "--site and --base-url are required." >&2
+  if [ -z "${site}" ]; then
+    echo "--site is required." >&2
     usage
     exit 64
   fi
 
   base_url="${base_url%/}"
+  case "${base_url}" in
+    https://*.lifna.site|http://*.lifna.site)
+      echo "--base-url should be the Lifna app URL, not the Drupal site URL." >&2
+      echo "Use https://app.lifna.io unless your Lifna page shows a different app host." >&2
+      exit 64
+      ;;
+  esac
   validate_base_url "${base_url}" "${dev_mode}"
   write_manifest "${site}" "${environment}" "${base_url}"
 

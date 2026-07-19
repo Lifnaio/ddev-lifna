@@ -17,7 +17,7 @@ post_install_actions:
       printf '#ddev-generated\n*\n' > ../.lifna/.gitignore
     fi
     echo "Lifna add-on installed."
-    echo "Connect this project with: ddev lifna connect --site=<site-slug> --environment=<env-slug> --base-url=<lifna-url>"
+    echo "Connect this project with: ddev lifna connect --site=<site-slug> --environment=<env-slug>"
 removal_actions:
   - |
     #ddev-description: Remove Lifna local secrets

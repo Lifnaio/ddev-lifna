@@ -79,13 +79,12 @@ PY
   run env DDEV_APPROOT="${TESTDIR}" DDEV_SITENAME="unit" LIFNA_TOKEN="lft_test_secret" \
     "${DIR}/commands/host/lifna" connect \
     --site=dream-site \
-    --environment=main \
-    --base-url=https://app.lifna.com
+    --environment=main
 
   [ "$status" -eq 0 ]
   [ -f "${TESTDIR}/.lifna/environment.json" ]
   [ -f "${TESTDIR}/.ddev/lifna/.env" ]
-  grep -q '"base_url": "https://app.lifna.com"' "${TESTDIR}/.lifna/environment.json"
+  grep -q '"base_url": "https://app.lifna.io"' "${TESTDIR}/.lifna/environment.json"
   grep -q '"slug": "dream-site"' "${TESTDIR}/.lifna/environment.json"
   grep -q "LIFNA_TOKEN='lft_test_secret'" "${TESTDIR}/.ddev/lifna/.env"
 }
@@ -95,12 +94,22 @@ PY
     "${DIR}/commands/host/lifna" connect \
     --site=dream-site \
     --environment=main \
-    --base-url=https://app.lifna.com \
     --token=lft_leaky
 
   [ "$status" -eq 64 ]
   [[ "$output" == *"Do not pass Lifna tokens"* ]]
   [ ! -f "${TESTDIR}/.ddev/lifna/.env" ]
+}
+
+@test "connect rejects tenant site URLs as base URLs" {
+  run env DDEV_APPROOT="${TESTDIR}" DDEV_SITENAME="unit" LIFNA_TOKEN="lft_test_secret" \
+    "${DIR}/commands/host/lifna" connect \
+    --site=dream-site \
+    --environment=main \
+    --base-url=https://dream-site.lifna.site
+
+  [ "$status" -eq 64 ]
+  [[ "$output" == *"--base-url should be the Lifna app URL"* ]]
 }
 
 @test "connect rejects untrusted production base URLs" {
@@ -127,7 +136,7 @@ PY
 }
 
 @test "doctor reports token presence without printing token value" {
-  run env LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=main LIFNA_ENVIRONMENT_TYPE=production LIFNA_BASE_URL=https://app.lifna.com LIFNA_TOKEN=lft_super_secret \
+  run env LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=main LIFNA_ENVIRONMENT_TYPE=production LIFNA_BASE_URL=https://app.lifna.io LIFNA_TOKEN=lft_super_secret \
     "${TEST_BASH}" "${DIR}/lifna/client.sh" doctor
 
   [ "$status" -eq 0 ]
@@ -147,7 +156,7 @@ PY
   mkdir -p .ddev/.downloads
   printf 'fake-db' > .ddev/.downloads/db.sql.gz
 
-  run "${TEST_BASH}" -c "printf 'nope\n' | LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=main LIFNA_ENVIRONMENT_TYPE=production LIFNA_BASE_URL=https://app.lifna.com LIFNA_TOKEN=lft_test_secret '${TEST_BASH}' '${DIR}/lifna/client.sh' push-db"
+  run "${TEST_BASH}" -c "printf 'nope\n' | LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=main LIFNA_ENVIRONMENT_TYPE=production LIFNA_BASE_URL=https://app.lifna.io LIFNA_TOKEN=lft_test_secret '${TEST_BASH}' '${DIR}/lifna/client.sh' push-db"
 
   [ "$status" -eq 67 ]
   [[ "$output" == *"Push cancelled"* ]]
@@ -158,7 +167,7 @@ PY
   create_tar "${TESTDIR}/malicious.tar.gz" "../evil.txt"
 
   run env PATH="${TESTDIR}/bin:${PATH}" FAKE_CURL_ARCHIVE="${TESTDIR}/malicious.tar.gz" \
-    LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=develop LIFNA_ENVIRONMENT_TYPE=development LIFNA_BASE_URL=https://app.lifna.com LIFNA_TOKEN=lft_test_secret \
+    LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=develop LIFNA_ENVIRONMENT_TYPE=development LIFNA_BASE_URL=https://app.lifna.io LIFNA_TOKEN=lft_test_secret \
     "${TEST_BASH}" "${DIR}/lifna/client.sh" pull-files
 
   [ "$status" -ne 0 ]
@@ -171,7 +180,7 @@ PY
   create_tar "${TESTDIR}/safe.tar.gz" "files/example.txt"
 
   run env PATH="${TESTDIR}/bin:${PATH}" FAKE_CURL_ARCHIVE="${TESTDIR}/safe.tar.gz" \
-    LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=develop LIFNA_ENVIRONMENT_TYPE=development LIFNA_BASE_URL=https://app.lifna.com LIFNA_TOKEN=lft_test_secret \
+    LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=develop LIFNA_ENVIRONMENT_TYPE=development LIFNA_BASE_URL=https://app.lifna.io LIFNA_TOKEN=lft_test_secret \
     "${TEST_BASH}" "${DIR}/lifna/client.sh" pull-files
 
   [ "$status" -eq 0 ]
