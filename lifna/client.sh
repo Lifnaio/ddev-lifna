@@ -42,13 +42,14 @@ api_path="/api/ddev/v1/sites/${lifna_site}/environments/${lifna_environment}"
 
 require_context() {
   if [ -z "${lifna_base_url}" ] || [ -z "${lifna_site}" ] || [ -z "${lifna_environment}" ]; then
-    echo "Missing Lifna context. Run: ddev lifna connect --site=<site-slug> --environment=<env-slug> --base-url=<lifna-url>" >&2
+    echo "Missing Lifna context. Run: ddev lifna connect --site=<site-slug> --environment=<env-slug>" >&2
     exit 64
   fi
 }
 
 validate_base_url() {
-  local trusted_url="https://app.lifna.com"
+  local trusted_url="https://app.lifna.io"
+  local legacy_trusted_url="https://app.lifna.com"
 
   if [ "${LIFNA_DEV_MODE:-0}" = "1" ]; then
     case "${lifna_base_url}" in
@@ -62,7 +63,7 @@ validate_base_url() {
     esac
   fi
 
-  if [ "${lifna_base_url}" != "${trusted_url}" ]; then
+  if [ "${lifna_base_url}" != "${trusted_url}" ] && [ "${lifna_base_url}" != "${legacy_trusted_url}" ]; then
     echo "Refusing untrusted Lifna URL: ${lifna_base_url}" >&2
     echo "Expected ${trusted_url}. Set LIFNA_DEV_MODE=1 only for local Lifna development." >&2
     exit 64
@@ -75,7 +76,7 @@ require_token() {
 Missing LIFNA_TOKEN.
 
 Create a Lifna DDEV token, then run:
-  ddev lifna connect --site=<site-slug> --environment=<env-slug> --base-url=<lifna-url>
+  ddev lifna connect --site=<site-slug> --environment=<env-slug>
 
 Do not commit tokens to Git.
 TOKEN
