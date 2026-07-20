@@ -5,6 +5,7 @@ set -euo pipefail
 manifest=".lifna/environment.json"
 env_file=".ddev/lifna/.env"
 downloads=".ddev/.downloads"
+database_chunk_size="${LIFNA_DATABASE_CHUNK_SIZE:-24m}"
 
 if [ -f "${env_file}" ]; then
   # shellcheck disable=SC1090
@@ -96,6 +97,58 @@ curl_lifna() {
 
 post_lifna() {
   curl_lifna -X POST "${lifna_base_url}${api_path}/$1"
+}
+
+upload_id() {
+  php -r 'echo bin2hex(random_bytes(16));' 2>/dev/null || printf '%s-%s' "$(date +%s)" "$$"
+}
+
+file_size() {
+  wc -c < "$1" | tr -d '[:space:]'
+}
+
+push_database_chunks() {
+  local database_file="$1"
+  local id
+  local chunk_dir
+  local chunk_total
+  local index
+  local size
+  local chunk
+
+  id="$(upload_id)"
+  chunk_dir="${downloads}/db-push-chunks-${id}"
+  rm -rf "${chunk_dir}"
+  mkdir -p "${chunk_dir}"
+
+  split -b "${database_chunk_size}" -d -a 6 "${database_file}" "${chunk_dir}/"
+  chunk_total="$(find "${chunk_dir}" -type f | wc -l | tr -d '[:space:]')"
+  size="$(file_size "${database_file}")"
+
+  if [ "${chunk_total}" -lt 1 ]; then
+    echo "Database dump is empty; nothing to push." >&2
+    exit 66
+  fi
+
+  index=0
+  for chunk in "${chunk_dir}"/*; do
+    echo "Uploading database chunk $((index + 1))/${chunk_total}..."
+    curl_lifna -X POST \
+      -F "upload_id=${id}" \
+      -F "chunk_index=${index}" \
+      -F "chunk_total=${chunk_total}" \
+      -F "database_chunk=@${chunk}" \
+      "${lifna_base_url}${api_path}/push/database/chunk" >/dev/null
+    index=$((index + 1))
+  done
+
+  curl_lifna -X POST \
+    -F "upload_id=${id}" \
+    -F "chunk_total=${chunk_total}" \
+    -F "size=${size}" \
+    "${lifna_base_url}${api_path}/push/database/complete"
+
+  rm -rf "${chunk_dir}"
 }
 
 is_protected_environment() {
@@ -209,7 +262,7 @@ case "${1:-status}" in
       exit 66
     fi
     confirm_protected_push
-    curl_lifna -X POST -F "database=@${downloads}/db.sql.gz" "${lifna_base_url}${api_path}/push/database"
+    push_database_chunks "${downloads}/db.sql.gz"
     ;;
   push-files)
     mkdir -p "${downloads}"
