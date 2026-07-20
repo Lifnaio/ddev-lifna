@@ -27,6 +27,10 @@ create_fake_curl() {
 set -eu
 
 out=""
+if [ -n "${FAKE_CURL_LOG:-}" ]; then
+  printf '%s\n' "$*" >> "${FAKE_CURL_LOG}"
+fi
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -o)
@@ -160,6 +164,23 @@ PY
 
   [ "$status" -eq 67 ]
   [[ "$output" == *"Push cancelled"* ]]
+}
+
+@test "database push uploads dumps in chunks" {
+  create_fake_curl
+  mkdir -p .ddev/.downloads
+  printf 'abcdefghijklmnop' > .ddev/.downloads/db.sql.gz
+
+  run env PATH="${TESTDIR}/bin:${PATH}" FAKE_CURL_LOG="${TESTDIR}/curl.log" LIFNA_DATABASE_CHUNK_SIZE=4 \
+    LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=develop LIFNA_ENVIRONMENT_TYPE=development LIFNA_BASE_URL=https://app.lifna.io LIFNA_TOKEN=lft_test_secret \
+    "${TEST_BASH}" "${DIR}/lifna/client.sh" push-db
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Uploading database chunk 1/4"* ]]
+  [[ "$output" == *"Uploading database chunk 4/4"* ]]
+  [ "$(grep -c '/push/database/chunk' "${TESTDIR}/curl.log")" -eq 4 ]
+  [ "$(grep -c '/push/database/complete' "${TESTDIR}/curl.log")" -eq 1 ]
+  [ -z "$(find .ddev/.downloads -maxdepth 1 -type d -name 'db-push-chunks-*' -print -quit)" ]
 }
 
 @test "pull-files rejects tar archives with traversal paths" {
