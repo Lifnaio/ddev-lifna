@@ -5,7 +5,7 @@ set -euo pipefail
 manifest=".lifna/environment.json"
 env_file=".ddev/lifna/.env"
 downloads=".ddev/.downloads"
-database_chunk_size="${LIFNA_DATABASE_CHUNK_SIZE:-24m}"
+database_chunk_size="${LIFNA_DATABASE_CHUNK_SIZE:-4m}"
 
 if [ -f "${env_file}" ]; then
   # shellcheck disable=SC1090
