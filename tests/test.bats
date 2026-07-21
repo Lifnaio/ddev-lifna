@@ -183,6 +183,23 @@ PY
   [ -z "$(find .ddev/.downloads -maxdepth 1 -type d -name 'db-push-chunks-*' -print -quit)" ]
 }
 
+@test "files push uploads archives in chunks" {
+  create_fake_curl
+  mkdir -p web/sites/default/files
+  printf 'abcdefghijklmnop' > web/sites/default/files/example.txt
+
+  run env PATH="${TESTDIR}/bin:${PATH}" FAKE_CURL_LOG="${TESTDIR}/curl.log" LIFNA_FILES_CHUNK_SIZE=64 \
+    LIFNA_SITE=dream-site LIFNA_ENVIRONMENT=develop LIFNA_ENVIRONMENT_TYPE=development LIFNA_BASE_URL=https://app.lifna.io LIFNA_TOKEN=lft_test_secret \
+    "${TEST_BASH}" "${DIR}/lifna/client.sh" push-files
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Uploading files chunk"* ]]
+  [ "$(grep -c '/push/files/chunk' "${TESTDIR}/curl.log")" -ge 1 ]
+  [ "$(grep -c '/push/files/complete' "${TESTDIR}/curl.log")" -eq 1 ]
+  [ "$(grep -c '/push/files$' "${TESTDIR}/curl.log" || true)" -eq 0 ]
+  [ -z "$(find .ddev/.downloads -maxdepth 1 -type d -name 'files-push-chunks-*' -print -quit)" ]
+}
+
 @test "pull-files rejects tar archives with traversal paths" {
   create_fake_curl
   create_tar "${TESTDIR}/malicious.tar.gz" "../evil.txt"

@@ -6,6 +6,7 @@ manifest=".lifna/environment.json"
 env_file=".ddev/lifna/.env"
 downloads=".ddev/.downloads"
 database_chunk_size="${LIFNA_DATABASE_CHUNK_SIZE:-768k}"
+files_chunk_size="${LIFNA_FILES_CHUNK_SIZE:-${database_chunk_size}}"
 
 if [ -f "${env_file}" ]; then
   # shellcheck disable=SC1090
@@ -168,6 +169,50 @@ push_database_chunks() {
   rm -rf "${chunk_dir}"
 }
 
+push_file_chunks() {
+  local files_archive="$1"
+  local id
+  local chunk_dir
+  local chunk_total
+  local index
+  local size
+  local chunk
+
+  id="$(upload_id)"
+  chunk_dir="${downloads}/files-push-chunks-${id}"
+  rm -rf "${chunk_dir}"
+  mkdir -p "${chunk_dir}"
+
+  split -b "${files_chunk_size}" -d -a 6 "${files_archive}" "${chunk_dir}/"
+  chunk_total="$(find "${chunk_dir}" -type f | wc -l | tr -d '[:space:]')"
+  size="$(file_size "${files_archive}")"
+
+  if [ "${chunk_total}" -lt 1 ]; then
+    echo "Files archive is empty; nothing to push." >&2
+    exit 66
+  fi
+
+  index=0
+  for chunk in "${chunk_dir}"/*; do
+    echo "Uploading files chunk $((index + 1))/${chunk_total}..."
+    curl_lifna_quiet -X POST \
+      -F "upload_id=${id}" \
+      -F "chunk_index=${index}" \
+      -F "chunk_total=${chunk_total}" \
+      -F "files_chunk=@${chunk}" \
+      "${lifna_base_url}${api_path}/push/files/chunk"
+    index=$((index + 1))
+  done
+
+  curl_lifna -X POST \
+    -F "upload_id=${id}" \
+    -F "chunk_total=${chunk_total}" \
+    -F "size=${size}" \
+    "${lifna_base_url}${api_path}/push/files/complete"
+
+  rm -rf "${chunk_dir}"
+}
+
 is_protected_environment() {
   local slug
   local type
@@ -295,7 +340,7 @@ case "${1:-status}" in
     fi
     validate_tar_paths "${downloads}/files-push.tar.gz"
     confirm_protected_push
-    curl_lifna -X POST -F "files=@${downloads}/files-push.tar.gz" "${lifna_base_url}${api_path}/push/files"
+    push_file_chunks "${downloads}/files-push.tar.gz"
     ;;
   *)
     echo "Unknown Lifna command: $1" >&2
