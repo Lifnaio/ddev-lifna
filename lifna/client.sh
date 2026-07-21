@@ -89,10 +89,27 @@ curl_lifna() {
   require_context
   validate_base_url
   require_token
-  curl --fail --silent --show-error \
+  curl --fail-with-body --silent --show-error \
     -H "Authorization: Bearer ${lifna_token}" \
     -H "Accept: application/json" \
     "$@"
+}
+
+curl_lifna_quiet() {
+  local response
+  response="$(mktemp)"
+
+  if curl_lifna "$@" > "${response}"; then
+    rm -f "${response}"
+    return 0
+  fi
+
+  if [ -s "${response}" ]; then
+    cat "${response}" >&2
+  fi
+
+  rm -f "${response}"
+  return 1
 }
 
 post_lifna() {
@@ -133,12 +150,12 @@ push_database_chunks() {
   index=0
   for chunk in "${chunk_dir}"/*; do
     echo "Uploading database chunk $((index + 1))/${chunk_total}..."
-    curl_lifna -X POST \
+    curl_lifna_quiet -X POST \
       -F "upload_id=${id}" \
       -F "chunk_index=${index}" \
       -F "chunk_total=${chunk_total}" \
       -F "database_chunk=@${chunk}" \
-      "${lifna_base_url}${api_path}/push/database/chunk" >/dev/null
+      "${lifna_base_url}${api_path}/push/database/chunk"
     index=$((index + 1))
   done
 
